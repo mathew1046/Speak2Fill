@@ -7,6 +7,15 @@ import 'dart:convert';
 import '../main.dart';
 import 'form_filling_screen.dart';
 
+String _inferMimeFromPath(String path) {
+  final lower = path.toLowerCase();
+  if (lower.endsWith('.png')) return 'image/png';
+  if (lower.endsWith('.webp')) return 'image/webp';
+  if (lower.endsWith('.heic') || lower.endsWith('.heif')) return 'image/heic';
+  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+  return 'image/jpeg';
+}
+
 const String backendBaseUrl = 'https://speak2fill.onrender.com';
 
 /// UploadScreen - Entry point of the app
@@ -237,7 +246,14 @@ class UploadScreen extends StatelessWidget {
             ),
           );
         } else {
-          request.files.add(await http.MultipartFile.fromPath('file', image.path));
+          final mime = image.mimeType ?? _inferMimeFromPath(image.path);
+          final parts = mime.split('/');
+          final mediaType = parts.length == 2 ? MediaType(parts[0], parts[1]) : MediaType('image', 'jpeg');
+          request.files.add(await http.MultipartFile.fromPath(
+            'file',
+            image.path,
+            contentType: mediaType,
+          ));
         }
 
         debugPrint('Uploading image to $uri');
