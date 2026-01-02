@@ -190,8 +190,8 @@ class _WhiteboardScreenState extends State<WhiteboardScreen> {
           displayWidth = displayHeight * aspectRatio;
         }
 
-        displayWidth = displayWidth.clamp(200.0, constraints.maxWidth);
-        displayHeight = displayHeight.clamp(200.0, constraints.maxHeight);
+        // displayWidth = displayWidth.clamp(200.0, constraints.maxWidth);
+        // displayHeight = displayHeight.clamp(200.0, constraints.maxHeight);
 
         return Container(
           width: displayWidth,
