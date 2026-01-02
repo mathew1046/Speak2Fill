@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../services/tts_service.dart';
 import '../services/stt_service.dart';
+import 'end_screen.dart';
 
 /// Whiteboard-only screen for voice-driven form filling
 /// NO CHAT UI - Only form image + highlight + 2 buttons
@@ -107,6 +108,7 @@ class _FormFillingScreenState extends State<FormFillingScreen> {
   Future<void> _handleChatResponse(Map<String, dynamic> response) async {
     final assistantText = response['assistant_text'] as String;
     final action = response['action'] as Map<String, dynamic>?;
+    final isComplete = response['is_complete'] as bool? ?? false;
 
     setState(() {
       _instructionText = assistantText;
@@ -121,6 +123,21 @@ class _FormFillingScreenState extends State<FormFillingScreen> {
       sessionId: widget.sessionId,
       language: "ml", // Backend will resolve correct language from session
     );
+
+    if (isComplete) {
+      // Wait for TTS to finish
+      await Future.delayed(const Duration(seconds: 4));
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => EndScreen(
+              sessionId: widget.sessionId,
+              backendUrl: widget.backendUrl,
+            ),
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _onMicTapped() async {

@@ -74,7 +74,8 @@ async def chat(req: ChatRequest) -> ChatResponse:
         completed_text = await _translate_if_needed("You have completed the form. Thank you!", user_lang, sarvam)
         return ChatResponse(
             assistant_text=completed_text,
-            action=None
+            action=None,
+            is_complete=True
         )
     
     # ===== STEP 3: Get current field =====
@@ -98,7 +99,8 @@ async def chat(req: ChatRequest) -> ChatResponse:
             skip_last_text = await _translate_if_needed("You skipped the last field. The form is complete.", user_lang, sarvam)
             return ChatResponse(
                 assistant_text=skip_last_text,
-                action=None
+                action=None,
+                is_complete=True
             )
 
         next_field = session_service.get_current_field(req.session_id)
@@ -214,8 +216,8 @@ async def chat(req: ChatRequest) -> ChatResponse:
         if not session_service.has_more_fields(req.session_id):
             done_text = await _translate_if_needed("Great job! The form is complete.", user_lang, sarvam)
             return ChatResponse(
-                assistant_text=done_text,
-                action=None
+                assistant_t,
+                is_complete=True
             )
         
         # Get next field
@@ -224,7 +226,8 @@ async def chat(req: ChatRequest) -> ChatResponse:
             fallback_done = await _translate_if_needed("The form is complete.", user_lang, sarvam)
             return ChatResponse(
                 assistant_text=fallback_done,
-                action=None
+                action=None,
+                is_complete=True
             )
         
         # Ask for next field value

@@ -33,7 +33,7 @@ class UploadFormResponse(BaseModel):
 
 class ChatRequest(BaseModel):
     session_id: str = Field(..., description="Session identifier")
-    event: Literal["USER_SPOKE", "CONFIRM_DONE", "SKIP_FIELD"] = Field("USER_SPOKE", description="Event type")
+    event: Literal["USER_SPOKE", "CONFIRM_DONE", "SKIP_FIELD", "RETRY_FIELD"] = Field("USER_SPOKE", description="Event type")
     user_text: Optional[str] = Field(None, description="Transcribed user speech (required for USER_SPOKE)")
     user_message: Optional[str] = Field(None, alias="user_message", description="Legacy field for user text")
     model_config = ConfigDict(populate_by_name=True, extra="ignore")
@@ -53,6 +53,9 @@ class ChatRequest(BaseModel):
             "SKIP": "SKIP_FIELD",
             "SKIP_FIELD": "SKIP_FIELD",
             "SKIPFIELD": "SKIP_FIELD",
+            "RETRY": "RETRY_FIELD",
+            "RETRY_FIELD": "RETRY_FIELD",
+            "RETAKE": "RETRY_FIELD",
         }
         return mapping.get(normalized, "USER_SPOKE")
 
@@ -70,3 +73,19 @@ class DrawGuideAction(BaseModel):
 class ChatResponse(BaseModel):
     assistant_text: str = Field(..., description="Instruction text to display and speak")
     action: Optional[DrawGuideAction] = Field(None, description="Visual guidance action for frontend")
+    is_complete: bool = Field(False, description="Whether the form filling session is complete")
+
+
+
+class FieldSummary(BaseModel):
+    field_label: str = Field(..., description="Human-readable field label")
+    value: str = Field(..., description="Filled value or placeholder")
+    status: str = Field(..., description="Filled or Skipped")
+
+
+class SessionSummary(BaseModel):
+    total_fields: int = Field(..., description="Total number of fields")
+    filled_count: int = Field(..., description="Number of filled fields")
+    skipped_count: int = Field(..., description="Number of skipped fields")
+    details: List[FieldSummary] = Field(..., description="Detailed list of fields")
+

@@ -8,12 +8,40 @@ import requests
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from PIL import Image
 
-from app.schemas.models import FormField, OcrItem, UploadFormResponse
+from app.schemas.models import FormField, OcrItem, UploadFormResponse, SessionSummary, FieldSummary
 from app.services.gemini_service import get_gemini_service
 from app.services.storage_service import store
 from app.services.session_service import session_service, FormField as SessionFormField
 
 router = APIRouter(tags=["forms"])
+
+
+@router.get("/session/{session_id}/summary", response_model=SessionSummary)
+def get_session_summary(session_id: str):
+    """Retrieve summary of the form filling session."""
+    state = session_service.get_session(session_id)
+    if not state:
+        raise HTTPException(status_code=404, detail="Session not found")
+    
+    details = []
+    filled_count = 0
+    skipped_count = 0
+    
+    for field in state.fields:
+        value = state.collected_values.get(field.field_id)
+        if value:
+            details.append(FieldSummary(field_label=field.label, value=value, status="Filled"))
+            filled_count += 1
+        else:
+            details.append(FieldSummary(field_label=field.label, value="-", status="Skipped"))
+            skipped_count += 1
+            
+    return SessionSummary(
+        total_fields=len(state.fields),
+        filled_count=filled_count,
+        skipped_count=skipped_count,
+        details=details
+    )
 
 
 @router.get("/session/{session_id}")
