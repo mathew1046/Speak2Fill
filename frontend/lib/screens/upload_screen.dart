@@ -16,8 +16,8 @@ String _inferMimeFromPath(String path) {
   return 'image/jpeg';
 }
 
-const String backendBaseUrl = 'https://speak2fill.onrender.com';
-// const String backendBaseUrl = 'http://localhost:8000';
+// const String backendBaseUrl = 'https://speak2fill.onrender.com';
+const String backendBaseUrl = 'http://localhost:8000';
 
 /// UploadScreenWithLanguage - handles image upload with selected language
 class UploadScreenWithLanguage extends StatelessWidget {

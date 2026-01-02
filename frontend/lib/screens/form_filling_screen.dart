@@ -221,6 +221,24 @@ class _FormFillingScreenState extends State<FormFillingScreen> {
     }
   }
 
+  Future<void> _onRetryPressed() async {
+    if (_isProcessing) return;
+
+    setState(() {
+      _isProcessing = true;
+      _instructionText = "Retrying...";
+    });
+
+    try {
+      final response = await _sendChatRequest(event: "RETRY_FIELD");
+      await _handleChatResponse(response);
+    } catch (e) {
+      _showError("Retry failed: $e");
+    } finally {
+      setState(() => _isProcessing = false);
+    }
+  }
+
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -365,6 +383,8 @@ class _FormFillingScreenState extends State<FormFillingScreen> {
           if (_currentPhase == "AWAIT_CONFIRMATION") ...[
             _buildConfirmButton(),
             const SizedBox(width: 12),
+            _buildRetryButton(),
+            const SizedBox(width: 12),
             _buildSkipButton(),
           ],
           if (_currentPhase == "ASK_INPUT") ...[
@@ -414,6 +434,20 @@ class _FormFillingScreenState extends State<FormFillingScreen> {
       style: FilledButton.styleFrom(
         backgroundColor: const Color(0xFF10B981),
         padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        elevation: 4,
+      ),
+    );
+  }
+
+  Widget _buildRetryButton() {
+    return FilledButton.icon(
+      onPressed: _isProcessing ? null : _onRetryPressed,
+      icon: const Icon(Icons.refresh, size: 24),
+      label: const Text("Retry"),
+      style: FilledButton.styleFrom(
+        backgroundColor: Colors.orange,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         elevation: 4,
       ),

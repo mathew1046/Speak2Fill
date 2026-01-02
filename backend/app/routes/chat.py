@@ -117,6 +117,20 @@ async def chat(req: ChatRequest) -> ChatResponse:
             action=None
         )
 
+    if event == "RETRY_FIELD":
+        # Reset phase to ASK_INPUT for the current field
+        session_service.set_phase(req.session_id, Phase.ASK_INPUT)
+        sarvam = SarvamService()
+        retry_text = await _translate_if_needed(
+            f"Okay, let's try again. Please speak the value for {current_field.label}.",
+            user_lang,
+            sarvam,
+        )
+        return ChatResponse(
+            assistant_text=retry_text,
+            action=None
+        )
+
     sarvam = SarvamService()
     
     # ===== STATE MACHINE LOGIC =====

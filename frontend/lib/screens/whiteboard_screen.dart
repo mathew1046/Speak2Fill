@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:typed_data';
 
-const String backendBaseUrl = 'https://speak2fill.onrender.com';
-// const String backendBaseUrl = 'http://localhost:8000';
+// const String backendBaseUrl = 'https://speak2fill.onrender.com';
+const String backendBaseUrl = 'http://localhost:8000';
 
 /// WhiteboardScreen - Shows form image with highlighted field bbox
 class WhiteboardScreen extends StatefulWidget {
