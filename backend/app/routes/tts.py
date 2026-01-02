@@ -11,15 +11,22 @@ router = APIRouter(tags=["tts"])
 
 
 def _lang_to_code(language: str) -> str:
+    """Map language code to Sarvam locale code for all 11 supported languages."""
     lang = (language or "en").lower().replace("_", "-")
     if "-" in lang:
         lang = lang.split("-")[0]
     return {
-        "ml": "ml-IN",
-        "en": "en-IN",
         "hi": "hi-IN",
+        "bn": "bn-IN",
+        "kn": "kn-IN",
+        "ml": "ml-IN",
+        "mr": "mr-IN",
+        "od": "od-IN",
+        "pa": "pa-IN",
         "ta": "ta-IN",
         "te": "te-IN",
+        "gu": "gu-IN",
+        "en": "en-IN",
     }.get(lang, "en-IN")
 
 
@@ -47,6 +54,16 @@ async def tts(
     """
     text = payload.get("text")
     language = payload.get("language", "en")
+    session_id = payload.get("session_id")
+    
+    # If session_id is provided, try to get language from session
+    if session_id:
+        state = session_service.get_session(session_id)
+        if state and state.selected_language:
+            language = state.selected_language
+        elif state and state.detected_language:
+            language = state.detected_language
+            
     voice = payload.get("voice", "default")
     session_id = payload.get("session_id")
     

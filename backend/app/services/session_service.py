@@ -28,6 +28,7 @@ class SessionState(BaseModel):
     image_width: int
     image_height: int
     detected_language: Optional[str] = None
+    selected_language: Optional[str] = None
 
 
 class SessionService:
@@ -43,6 +44,7 @@ class SessionService:
         image_width: int,
         image_height: int,
         detected_language: Optional[str] = None,
+        selected_language: Optional[str] = None,
     ) -> SessionState:
         """Initialize a new form filling session"""
         state = SessionState(
@@ -54,6 +56,7 @@ class SessionService:
             image_width=image_width,
             image_height=image_height,
             detected_language=detected_language,
+            selected_language=selected_language,
         )
         self._sessions[session_id] = state
         return state

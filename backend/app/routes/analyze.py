@@ -5,7 +5,7 @@ from io import BytesIO
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from PIL import Image
 
 from app.schemas.models import FormField, OcrItem, UploadFormResponse
@@ -235,7 +235,10 @@ def _call_remote_ocr(image_bytes: bytes, filename: Optional[str], content_type: 
 
 
 @router.post("/analyze-form", response_model=UploadFormResponse)
-async def analyze_form(file: UploadFile = File(...)) -> UploadFormResponse:
+async def analyze_form(
+    file: UploadFile = File(...),
+    language: Optional[str] = Form(None)
+) -> UploadFormResponse:
     """Accept an image, run remote OCR, validate with Gemini, and create a session."""
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Please upload an image file.")
@@ -255,8 +258,26 @@ async def analyze_form(file: UploadFile = File(...)) -> UploadFormResponse:
         image_bytes=image_bytes, filename=file.filename, content_type=file.content_type
     )
 
-    image_width = reported_width or local_width
-    image_height = reported_height or local_height
+    # Fix for bbox misalignment:
+    # If OCR service returns dimensions different from local image, scale bboxes to match local image.
+    # We always want to use local dimensions because we display the original image.
+    if reported_width and reported_height and (reported_width != local_width or reported_height != local_height):
+        scale_x = local_width / reported_width
+        scale_y = local_height / reported_height
+        print(f"DEBUG: Scaling OCR bboxes by x={scale_x}, y={scale_y} (reported={reported_width}x{reported_height}, local={local_width}x{local_height})")
+        
+        for item in ocr_items:
+            if "bbox" in item:
+                bbox = item["bbox"]
+                item["bbox"] = [
+                    int(bbox[0] * scale_x),
+                    int(bbox[1] * scale_y),
+                    int(bbox[2] * scale_x),
+                    int(bbox[3] * scale_y),
+                ]
+
+    image_width = local_width
+    image_height = local_height
 
     # Deduplicate OCR items to reduce response bloat
     ocr_items = _deduplicate_ocr_items(ocr_items)
@@ -322,7 +343,8 @@ async def analyze_form(file: UploadFile = File(...)) -> UploadFormResponse:
         session_id=session_id,
         fields=session_fields,
         image_width=image_width,
-        image_height=image_height
+        image_height=image_height,
+        selected_language=language
     )
 
     # Return clean, minimal response

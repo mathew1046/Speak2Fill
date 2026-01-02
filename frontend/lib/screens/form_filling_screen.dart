@@ -119,6 +119,7 @@ class _FormFillingScreenState extends State<FormFillingScreen> {
       assistantText,
       backendUrl: widget.backendUrl,
       sessionId: widget.sessionId,
+      language: "ml", // Backend will resolve correct language from session
     );
   }
 

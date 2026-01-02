@@ -71,12 +71,21 @@ class SarvamService:
         """
         import asyncio
         
-        prompt = f"""Extract the value for this form field.
-Field label: {field_label}
-Expected language: {write_language}
-User text: {user_text}
+        prompt = f"""You are an expert form filling assistant. Your task is to extract the precise value for a form field from the user's spoken input.
 
-Output ONLY the extracted value. Nothing else."""
+Field Label: "{field_label}"
+Expected Format/Language: "{write_language}"
+User Input: "{user_text}"
+
+Rules:
+1. Extract ONLY the value to be written in the field.
+2. If the user provides a date, ALWAYS format it as DD/MM/YYYY (e.g., 01/01/2024).
+3. If the user spells out numbers or symbols, convert them to standard format (e.g., "slash" -> "/").
+4. If the user corrects themselves, use the final corrected value.
+5. Do not include any conversational filler (e.g., "The date is...", "It is...").
+6. If the input is irrelevant or empty, return an empty string.
+
+Extracted Value:"""
 
         messages = [
             {
@@ -171,7 +180,26 @@ Keep it brief and natural in {target_language}."""
         if self.stub or target_language == "en":
             return text
 
-        prompt = f"""Translate the following assistant message into {target_language}.
+        # Map codes to full names for better LLM performance
+        lang_map = {
+            "hi": "Hindi",
+            "bn": "Bengali",
+            "kn": "Kannada",
+            "ml": "Malayalam",
+            "mr": "Marathi",
+            "od": "Odia",
+            "pa": "Punjabi",
+            "ta": "Tamil",
+            "te": "Telugu",
+            "gu": "Gujarati",
+            "en": "English"
+        }
+        
+        # Handle both "ml" and "ml-IN" formats
+        code = target_language.lower().split("-")[0]
+        full_lang = lang_map.get(code, target_language)
+
+        prompt = f"""Translate the following assistant message into {full_lang}.
 Preserve meaning and keep it concise.
 
 Message:
@@ -181,7 +209,7 @@ Message:
         messages = [
             {
                 "role": "system",
-                "content": "You are a precise translator. Return only the translated text without quotes.",
+                "content": f"You are a precise translator. Translate the text to {full_lang}. Return only the translated text without quotes."
             },
             {
                 "role": "user",

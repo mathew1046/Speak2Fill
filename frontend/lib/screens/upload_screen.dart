@@ -16,7 +16,150 @@ String _inferMimeFromPath(String path) {
   return 'image/jpeg';
 }
 
-const String backendBaseUrl = 'https://speak2fill.onrender.com';
+// const String backendBaseUrl = 'https://speak2fill.onrender.com';
+const String backendBaseUrl = 'http://localhost:8000';
+
+/// UploadScreenWithLanguage - handles image upload with selected language
+class UploadScreenWithLanguage extends StatelessWidget {
+  final String selectedLanguage;
+  final ImageSource imageSource;
+
+  const UploadScreenWithLanguage({
+    super.key,
+    required this.selectedLanguage,
+    required this.imageSource,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Automatically trigger image picker when this screen is mounted
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _pickImage(context);
+    });
+
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      body: const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+  }
+
+  Future<void> _pickImage(BuildContext context) async {
+    final picker = ImagePicker();
+    try {
+      final XFile? image = await picker.pickImage(source: imageSource, imageQuality: 100);
+      if (image != null && context.mounted) {
+        _uploadImage(context, image);
+      } else {
+        // User cancelled, go back
+        if (context.mounted) {
+          Navigator.pop(context);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error picking image: $e');
+      if (context.mounted) {
+        _showError(context, 'Image selection failed');
+        Navigator.pop(context);
+      }
+    }
+  }
+
+  Future<void> _uploadImage(BuildContext context, XFile image) async {
+    try {
+      // Send to /analyze-form (multipart/form-data, field name 'file')
+      final uri = Uri.parse('$backendBaseUrl/analyze-form');
+      final request = http.MultipartRequest('POST', uri);
+
+      if (kIsWeb) {
+        // On web, use bytes since dart:io is not available
+        final bytes = await image.readAsBytes();
+        final filename = image.name.isNotEmpty ? image.name : 'upload.jpg';
+
+        // Infer mime type from filename extension (basic)
+        String lower = filename.toLowerCase();
+        String mimeMain = 'jpeg';
+        if (lower.endsWith('.png')) mimeMain = 'png';
+        else if (lower.endsWith('.webp')) mimeMain = 'webp';
+
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'file',
+            bytes,
+            filename: filename,
+            contentType: MediaType('image', mimeMain),
+          ),
+        );
+      } else {
+        final mime = image.mimeType ?? _inferMimeFromPath(image.path);
+        final parts = mime.split('/');
+        final mediaType = parts.length == 2 ? MediaType(parts[0], parts[1]) : MediaType('image', 'jpeg');
+        request.files.add(await http.MultipartFile.fromPath(
+          'file',
+          image.path,
+          contentType: mediaType,
+        ));
+      }
+
+      // Add language as form field
+      request.fields['language'] = selectedLanguage;
+
+      debugPrint('Uploading image to $uri with language: $selectedLanguage');
+      final streamed = await request.send();
+      final resp = await http.Response.fromStream(streamed);
+
+      if (resp.statusCode == 200) {
+        final data = json.decode(resp.body) as Map<String, dynamic>;
+        final sessionId = data['session_id'] as String?;
+        final imageWidth = (data['image_width'] as num?)?.toInt();
+        final imageHeight = (data['image_height'] as num?)?.toInt();
+
+        if (sessionId != null && imageWidth != null && imageHeight != null && context.mounted) {
+          // Replace current route with form filling screen
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => FormFillingScreen(
+                sessionId: sessionId,
+                backendUrl: backendBaseUrl,
+                imageWidth: imageWidth,
+                imageHeight: imageHeight,
+              ),
+            ),
+          );
+        } else {
+          debugPrint('Invalid analyze-form response: $data');
+          if (context.mounted) {
+            _showError(context, 'Invalid analyze response');
+            Navigator.pop(context);
+          }
+        }
+      } else {
+        debugPrint('Analyze-form failed: ${resp.statusCode} ${resp.body}');
+        if (context.mounted) {
+          _showError(context, 'Upload failed (${resp.statusCode})');
+          Navigator.pop(context);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error uploading image: $e');
+      if (context.mounted) {
+        _showError(context, 'Upload failed: $e');
+        Navigator.pop(context);
+      }
+    }
+  }
+
+  void _showError(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+}
 
 /// UploadScreen - Entry point of the app
 class UploadScreen extends StatelessWidget {

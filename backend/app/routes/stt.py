@@ -10,26 +10,33 @@ router = APIRouter(tags=["stt"])
 
 
 def _lang_to_code(language: str) -> str:
-    """Map short language code to Sarvam locale code."""
+    """Map short language code to Sarvam locale code for all 11 supported languages."""
     lang = (language or "en").lower().replace("_", "-")
     if "-" in lang:
         lang = lang.split("-")[0]
     return {
-        "ml": "ml-IN",
-        "en": "en-IN",
         "hi": "hi-IN",
+        "bn": "bn-IN",
+        "kn": "kn-IN",
+        "ml": "ml-IN",
+        "mr": "mr-IN",
+        "od": "od-IN",
+        "pa": "pa-IN",
         "ta": "ta-IN",
         "te": "te-IN",
+        "gu": "gu-IN",
+        "en": "en-IN",
     }.get(lang, "en-IN")
 
 
 def _normalize_lang(language: Optional[str]) -> str:
+    """Normalize language code to short form for all 11 Sarvam AI languages."""
     if not language:
         return "en"
     lang = language.lower().replace("_", "-")
     if "-" in lang:
         lang = lang.split("-")[0]
-    allowed = {"en", "hi", "ml", "ta", "te"}
+    allowed = {"hi", "bn", "kn", "ml", "mr", "od", "pa", "ta", "te", "gu", "en"}
     return lang if lang in allowed else "en"
 
 
@@ -65,9 +72,24 @@ async def stt(
         logger.error(f"STT: Sarvam init failed: {e}")
         raise HTTPException(status_code=500, detail=f"Sarvam init failed: {e}")
     
-    # Use Sarvam auto language detection by default (language_code="unknown" per docs)
+    # Determine language code to use for STT
+    # Priority: 1) session selected_language, 2) provided language param, 3) auto-detect
     language_code = "unknown"
-    logger.info(f"STT: Using language_code={language_code} (auto-detect)")
+    
+    if session_id:
+        state = session_service.get_session(session_id)
+        if state and state.selected_language:
+            language_code = _lang_to_code(state.selected_language)
+            logger.info(f"STT: Using selected_language from session: {language_code}")
+        elif state and state.detected_language:
+            language_code = _lang_to_code(state.detected_language)
+            logger.info(f"STT: Using detected_language from session: {language_code}")
+    
+    if language_code == "unknown" and language and language != "en":
+        language_code = _lang_to_code(language)
+        logger.info(f"STT: Using provided language param: {language_code}")
+    elif language_code == "unknown":
+        logger.info(f"STT: Using auto-detect (language_code=unknown)")
     
     try:
         transcript, detected_language = await sarvam.speech_to_text(content, language_code=language_code)

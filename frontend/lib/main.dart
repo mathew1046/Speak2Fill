@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'screens/upload_screen.dart';
+import 'screens/language_selection_screen.dart';
 
 void main() {
   runApp(const Speak2FillApp());
@@ -33,7 +33,7 @@ class _Speak2FillAppState extends State<Speak2FillApp> {
       themeMode: _themeMode,
       theme: _buildTheme(Brightness.light),
       darkTheme: _buildTheme(Brightness.dark),
-      home: const UploadScreen(),
+      home: const LanguageSelectionScreen(),
     );
   }
 

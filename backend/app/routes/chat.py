@@ -24,14 +24,14 @@ router = APIRouter(tags=["chat"])
 
 
 def _normalize_language(lang: Optional[str]) -> str:
-    """Normalize various language codes to short form used across the app."""
+    """Normalize various language codes to short form for all 11 Sarvam AI languages."""
     if not lang:
         return "en"
     lower = str(lang).strip().lower().replace("_", "-")
     # Prefer short code before hyphen if present, e.g., hi-IN -> hi
     if "-" in lower:
         lower = lower.split("-")[0]
-    allowed = {"en", "hi", "ml", "ta", "te"}
+    allowed = {"hi", "bn", "kn", "ml", "mr", "od", "pa", "ta", "te", "gu", "en"}
     return lower if lower in allowed else "en"
 
 
@@ -65,7 +65,7 @@ async def chat(req: ChatRequest) -> ChatResponse:
         raise HTTPException(status_code=404, detail="Session not found")
 
     # Resolve user language: first detected language stored in session or DB, fallback to English.
-    stored_lang = state.detected_language or store.get_language(req.session_id)
+    stored_lang = state.selected_language or state.detected_language or store.get_language(req.session_id)
     user_lang = _normalize_language(stored_lang)
     
     # ===== STEP 2: Check if form is complete =====
@@ -150,18 +150,13 @@ async def chat(req: ChatRequest) -> ChatResponse:
         session_service.set_phase(req.session_id, Phase.AWAIT_CONFIRMATION)
         
         # Generate instruction text in the user's language
-        if user_lang == "en":
-            instruction_text = f"Please write {extracted_value} inside the highlighted box."
-        else:
+        instruction_text = f"Please write {extracted_value} inside the highlighted box."
+        if user_lang != "en":
             try:
-                instruction_text = await sarvam.generate_instruction_text(
-                    field_label=current_field.label,
-                    extracted_value=extracted_value,
-                    target_language=user_lang,
-                )
+                instruction_text = await sarvam.translate_text(instruction_text, target_language=user_lang)
             except Exception as e:
-                logger.warning(f"Instruction generation failed for lang={user_lang}: {e}")
-                instruction_text = f"Please write {extracted_value} inside the highlighted box."
+                logger.warning(f"Translation failed for instruction lang={user_lang}: {e}")
+                # Keep English as fallback
         
         # Return with draw guide action
         return ChatResponse(
