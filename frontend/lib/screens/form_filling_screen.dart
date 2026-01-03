@@ -395,18 +395,15 @@ class _FormFillingScreenState extends State<FormFillingScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          if (_currentPhase == "ASK_INPUT" || _currentPhase == null)
+          if (_currentPhase == "ASK_INPUT" || _currentPhase == null) ...[
             _buildSpeakButton(),
+            const SizedBox(width: 12),
+            _buildSkipButton(),
+          ],
           if (_currentPhase == "AWAIT_CONFIRMATION") ...[
             _buildConfirmButton(),
             const SizedBox(width: 12),
             _buildRetryButton(),
-            const SizedBox(width: 12),
-            _buildSkipButton(),
-          ],
-          if (_currentPhase == "ASK_INPUT") ...[
-            const SizedBox(width: 12),
-            _buildSkipButton(),
           ],
         ],
       ),

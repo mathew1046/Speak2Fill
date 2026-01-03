@@ -74,16 +74,18 @@ class SarvamService:
         prompt = f"""You are an expert form filling assistant. Your task is to extract the precise value for a form field from the user's spoken input.
 
 Field Label: "{field_label}"
-Expected Format/Language: "{write_language}"
-User Input: "{user_text}"
+User Input (in their language): "{user_text}"
+
+IMPORTANT: Always return the extracted value in ENGLISH, regardless of the language the user spoke in.
 
 Rules:
 1. Extract ONLY the value to be written in the field.
-2. If the user provides a date, ALWAYS format it as DD/MM/YYYY (e.g., 01/01/2024).
-3. If the user spells out numbers or symbols, convert them to standard format (e.g., "slash" -> "/").
-4. If the user corrects themselves, use the final corrected value.
-5. Do not include any conversational filler (e.g., "The date is...", "It is...").
-6. If the input is irrelevant or empty, return an empty string.
+2. Convert the extracted value to English if it was spoken in another language.
+3. If the user provides a date, ALWAYS format it as DD/MM/YYYY (e.g., 01/01/2024).
+4. If the user spells out numbers or symbols, convert them to standard format (e.g., "slash" -> "/").
+5. If the user corrects themselves, use the final corrected value.
+6. Do not include any conversational filler (e.g., "The date is...", "It is...").
+7. If the input is irrelevant or empty, return an empty string.
 
 Extracted Value:"""
 
@@ -137,7 +139,7 @@ Field: {field_label}
 Value to write: {extracted_value}
 
 Output format: "Please write [value] in the [field] box."
-Keep it brief and natural in {target_language}."""
+Keep it brief and natural in {target_language}. Donot change the language of {extracted_value}"""
 
         messages = [
             {

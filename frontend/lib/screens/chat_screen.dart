@@ -38,7 +38,6 @@ class _ChatScreenState extends State<ChatScreen> {
   final List<Map<String, dynamic>> _messages = [];
 
   bool _isTyping = false;
-  bool _hasStarted = false;
 
   @override
   void initState() {
@@ -57,13 +56,8 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _startFormFlow() {
-    setState(() {
-      _hasStarted = true;
-    });
     _sendChatMessage("");
   }
-
-  void _askCurrentQuestion() {}
 
   void _addAssistantMessage(String content) {
     setState(() {

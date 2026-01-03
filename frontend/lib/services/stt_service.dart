@@ -27,7 +27,7 @@ class SttService {
     try {
       _record = AudioRecorder();
       final hasPermission = await _record.hasPermission();
-      _isInitialized = hasPermission ?? false;
+      _isInitialized = hasPermission;
       return _isInitialized;
     } catch (e) {
       print('STT initialization error: $e');
