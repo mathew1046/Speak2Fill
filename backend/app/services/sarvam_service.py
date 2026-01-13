@@ -67,32 +67,35 @@ class SarvamService:
             write_language: Expected language for the field value
         
         Returns:
-            Extracted value only
+            Extracted value only (always in English)
         """
         import asyncio
         
-        prompt = f"""You are an expert form filling assistant. Your task is to extract the precise value for a form field from the user's spoken input.
+        prompt = f"""You are an expert form filling assistant. Extract the precise value for a form field from user speech.
 
 Field Label: "{field_label}"
 User Input (in their language): "{user_text}"
 
-IMPORTANT: Always return the extracted value in ENGLISH, regardless of the language the user spoke in.
+CRITICAL RULE: Always return ONLY the extracted value in ENGLISH. Do NOT translate to user language.
 
 Rules:
-1. Extract ONLY the value to be written in the field.
-2. Convert the extracted value to English if it was spoken in another language.
-3. If the user provides a date, ALWAYS format it as DD/MM/YYYY (e.g., 01/01/2024).
-4. If the user spells out numbers or symbols, convert them to standard format (e.g., "slash" -> "/").
-5. If the user corrects themselves, use the final corrected value.
-6. Do not include any conversational filler (e.g., "The date is...", "It is...").
-7. If the input is irrelevant or empty, return an empty string.
+1. Extract ONLY the exact value to be written - nothing else
+2. If user spoke in a language other than English, convert to English (e.g., മാത്യു → Mathew)
+3. For names: Use proper case (John Smith, not john smith)
+4. For dates: ALWAYS format as DD/MM/YYYY (e.g., 15/08/1995, not August 15 or 8/15/1995)
+5. For numbers: Return digits only (e.g., 9876543210, not nine eight seven...)
+6. For addresses: Use sentence case, preserve line breaks
+7. Remove conversational filler: "The name is...", "I think it's...", "It should be..."
+8. If user self-corrects (says "no wait..."), use the FINAL corrected value
+9. For empty/irrelevant input, return empty string
+10. Never add units or punctuation unless user said them (e.g., "1000 rupees" → "1000", not "1000 Rs")
 
-Extracted Value:"""
+Return ONLY the extracted value, nothing else:"""
 
         messages = [
             {
                 "role": "system",
-                "content": "You are a precise form field extractor. Output only the extracted value."
+                "content": "You are a precise form field value extractor. Output ONLY the extracted value in English, with no additional text, explanations, or translations."
             },
             {
                 "role": "user",
@@ -139,7 +142,7 @@ Field: {field_label}
 Value to write: {extracted_value}
 
 Output format: "Please write [value] in the [field] box."
-Keep it brief and natural in {target_language}. Donot change the language of {extracted_value}"""
+Keep it brief and natural in {target_language}. keep the language of {extracted_value} english"""
 
         messages = [
             {
@@ -211,7 +214,7 @@ Message:
         messages = [
             {
                 "role": "system",
-                "content": f"You are a precise translator. Translate the text to {full_lang}. Return only the translated text without quotes."
+                "content": f"You are a precise translator. Translate the text to {full_lang}. Return only the translated text without quotes. Keep the original format of the text, if the text has {{}} do not remove them."
             },
             {
                 "role": "user",

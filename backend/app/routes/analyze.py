@@ -319,8 +319,12 @@ async def analyze_form(
 
     # Call Gemini to identify fillable fields
     try:
+        import base64
+        # Encode image to base64
+        image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+        
         gemini = get_gemini_service()
-        fields = gemini.analyze_form_fields(filtered_items, image_width, image_height)
+        fields = gemini.analyze_form_fields(filtered_items, image_width, image_height, image_base64=image_base64)
         print(f"DEBUG: gemini fields: {fields}")
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Gemini API error: {str(exc)}") from exc

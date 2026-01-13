@@ -22,10 +22,10 @@ class GeminiService:
         self.base_url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model_name}:generateContent"
 
     def analyze_form_fields(
-        self, ocr_items: List[Dict[str, Any]], image_width: int, image_height: int
+        self, ocr_items: List[Dict[str, Any]], image_width: int, image_height: int, image_base64: str = ""
     ) -> List[Dict[str, Any]]:
         """
-        Call Gemini API to identify form fields from OCR data.
+        Call Gemini API to identify form fields from OCR data AND image.
         Returns list of field dicts with: label, bbox, input_mode, write_language
         """
         # Build prompt with OCR data
@@ -38,39 +38,67 @@ class GeminiService:
 
         ocr_summary = "\n".join(ocr_text_items)
 
-        prompt = f"""You are analyzing a scanned form. Based on the OCR text below, identify ALL fillable fields that need user input.
+        prompt = f"""You are analyzing a scanned form image. Based on the provided image and OCR text below, identify ONLY the fillable fields that require user input.
 
-OCR Data (image dimensions: {image_width}x{image_height}):
+Form Dimensions: {image_width}x{image_height} pixels
+
+OCR Data:
 {ocr_summary}
 
-Rules:
-1. EXCLUDE office-only fields (e.g., "For office use only", "Approval stamp")
-2. EXCLUDE pre-filled system fields (e.g., form numbers, dates already filled)
-3. For each user-fillable field, determine:
-   - label: clear field name (e.g., "Name", "Date of Birth", "Address")
-   - bbox: bounding box coordinates [x1, y1, x2, y2] where user should write
-   - input_mode: "voice" for text fields, "placeholder" for dates/signatures
-   - write_language: "en" for English, "ml" for Malayalam/native, "numeric" for numbers
+CRITICAL FILTERS - EXCLUDE these fields:
+1. Office-use-only sections (contains "for office use", "office use only", "stamp", "approval")
+2. Pre-printed/pre-filled information (dates, reference numbers already filled)
+3. Instructions or informational text (non-data fields)
+4. Signature boxes labeled "Office" or "Official"
+5. Decorative elements or headers
 
-Return ONLY valid JSON array (no markdown, no explanation):
+For EACH user-fillable field, determine:
+- label: clear, user-friendly field name (e.g., "Full Name", "Date of Birth", "Mobile Number")
+- bbox: [x1, y1, x2, y2] - precise bounding box of the INPUT AREA where user writes (not the label)
+- input_mode: "voice" for text/numeric/address, "placeholder" for dates/fixed formats
+- write_language: "en" for English, "numeric" for numbers only, "date" for dates
+
+IMPORTANT: Use the image to verify which fields are actually empty/fillable by users (not office fields).
+
+Return ONLY valid JSON array (no markdown, no explanation, no code blocks):
 [
   {{
-    "label": "Name",
-    "bbox": [x1, y1, x2, y2],
+    "label": "Full Name",
+    "bbox": [150, 100, 450, 130],
     "input_mode": "voice",
     "write_language": "en"
   }},
-  ...
+  {{
+    "label": "Date of Birth",
+    "bbox": [150, 150, 350, 180],
+    "input_mode": "placeholder",
+    "write_language": "date"
+  }}
 ]
 
-JSON output:"""
+JSON array:"""
 
         try:
+            # Prepare request content with image if provided
+            parts = []
+            
+            # Add image if base64 provided
+            if image_base64:
+                parts.append({
+                    "inline_data": {
+                        "mime_type": "image/jpeg",
+                        "data": image_base64
+                    }
+                })
+            
+            # Add text prompt
+            parts.append({"text": prompt})
+            
             response = requests.post(
                 f"{self.base_url}?key={self.api_key}",
                 headers={"Content-Type": "application/json"},
                 json={
-                    "contents": [{"parts": [{"text": prompt}]}],
+                    "contents": [{"parts": parts}],
                     "generationConfig": {
                         "temperature": 0.1,
                         "maxOutputTokens": 2048,
