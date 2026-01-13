@@ -11,6 +11,7 @@ Events:
 - USER_SPOKE: User provided voice input (after STT)
 - CONFIRM_DONE: User confirmed writing is complete
 """
+import re
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from typing import Optional
 from app.schemas.models import ChatRequest, ChatResponse, DrawGuideAction
@@ -165,11 +166,16 @@ async def chat(req: ChatRequest) -> ChatResponse:
         # Switch to AWAIT_CONFIRMATION phase
         session_service.set_phase(req.session_id, Phase.AWAIT_CONFIRMATION)
         
-        # Generate instruction text in the user's language
-        instruction_text = f"Please write {extracted_value} inside the highlighted box."
+        # Generate instruction text with placeholder format: "Please write {value} in {field} box"
+        field_label = current_field.label
+        instruction_text = f"Please write {{{extracted_value}}} in the {field_label} box."
+        
+        # Translate instruction to user's language (keeping the extracted value in English)
         if user_lang != "en":
             try:
+                # Translate only the template, not the value inside braces
                 instruction_text = await sarvam.translate_text(instruction_text, target_language=user_lang)
+                instruction_text = re.sub(r'\{.*?\}', extracted_value, instruction_text)
             except Exception as e:
                 logger.warning(f"Translation failed for instruction lang={user_lang}: {e}")
                 # Keep English as fallback
@@ -231,7 +237,7 @@ async def chat(req: ChatRequest) -> ChatResponse:
             )
         
         # Ask for next field value
-        next_instruction = f"Now please say the value for {next_field.label}."
+        next_instruction = f"Now please say the {next_field.label}."
         if user_lang != "en":
             try:
                 next_instruction = await sarvam.translate_text(next_instruction, target_language=user_lang)
